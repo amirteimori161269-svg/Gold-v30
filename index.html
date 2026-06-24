@@ -1,17 +1,258 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gold V30</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>بنکداری طلا</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    .nav-active { color: #f59e0b; border-top: 3px solid #f59e0b; }
+  </style>
 </head>
-<body>
+<body class="bg-zinc-950 text-white min-h-screen pb-20">
 
-<h1>طلا و جواهر اصفهان</h1>
+  <!-- Header -->
+  <div class="bg-zinc-900 border-b border-zinc-800 p-4 sticky top-0 z-50">
+    <h1 class="text-2xl font-bold text-amber-400">بنکداری طلا</h1>
+    <p class="text-zinc-400 text-sm">مدیریت بدون ریال</p>
+  </div>
 
-<h2>GOLD V30</h2>
+  <!-- Navigation -->
+  <div class="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-700 flex text-xs z-50">
+    <button onclick="showPage(0)" class="flex-1 py-3 nav-active" id="nav-0">مشتریان</button>
+    <button onclick="showPage(1)" class="flex-1 py-3" id="nav-1">جنس‌ها</button>
+    <button onclick="showPage(2)" class="flex-1 py-3" id="nav-2">فاکتور</button>
+    <button onclick="showPage(3)" class="flex-1 py-3" id="nav-3">گزارش</button>
+  </div>
 
-<p>اگر این صفحه را می‌بینی یعنی سایت با موفقیت منتشر شده است.</p>
+  <!-- Page 0: مشتریان -->
+  <div id="page-0" class="page p-4">
+    <button onclick="addCustomer()" class="w-full bg-amber-500 text-black py-4 rounded-2xl font-bold mb-6">+ مشتری جدید</button>
+    <div id="customers-list" class="space-y-3"></div>
+  </div>
 
+  <!-- Page 1: جنس‌ها -->
+  <div id="page-1" class="page p-4 hidden">
+    <button onclick="addItem()" class="w-full bg-amber-500 text-black py-4 rounded-2xl font-bold mb-6">+ جنس جدید</button>
+    <div id="items-list" class="space-y-3"></div>
+  </div>
+
+  <!-- Page 2: فاکتور جدید -->
+  <div id="page-2" class="page p-4 hidden">
+    <div class="bg-zinc-900 rounded-3xl p-5">
+      <select id="invoice-type" class="w-full bg-zinc-800 p-4 rounded-2xl mb-4 text-lg">
+        <option value="sell">فاکتور فروش</option>
+        <option value="buy">فاکتور خرید</option>
+      </select>
+      
+      <select id="customer-select" class="w-full bg-zinc-800 p-4 rounded-2xl mb-4"></select>
+      
+      <div id="invoice-items" class="space-y-3 mb-6"></div>
+      
+      <button onclick="addItemToInvoice()" class="w-full border border-dashed border-amber-400 py-4 rounded-2xl text-amber-400 mb-6">+ اضافه کردن جنس به فاکتور</button>
+      
+      <button onclick="saveInvoice()" class="w-full bg-green-500 text-black py-5 rounded-3xl font-bold text-lg">ثبت فاکتور</button>
+    </div>
+  </div>
+
+  <!-- Page 3: گزارش -->
+  <div id="page-3" class="page p-4 hidden">
+    <div class="bg-zinc-900 rounded-3xl p-6 text-center">
+      <h2 class="text-xl mb-6">گزارش کل</h2>
+      <div id="report-content" class="space-y-6"></div>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <div id="modal" class="hidden fixed inset-0 bg-black/80 flex items-end">
+    <div class="bg-zinc-900 w-full rounded-t-3xl p-6 max-h-[85vh] overflow-auto">
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+<script>
+// Data
+let customers = JSON.parse(localStorage.getItem('customers')) || [];
+let items = JSON.parse(localStorage.getItem('items')) || [];
+let invoices = JSON.parse(localStorage.getItem('invoices')) || [];
+let currentInvoice = { items: [] };
+
+// Render functions
+function saveData() {
+  localStorage.setItem('customers', JSON.stringify(customers));
+  localStorage.setItem('items', JSON.stringify(items));
+  localStorage.setItem('invoices', JSON.stringify(invoices));
+}
+
+function showPage(n) {
+  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+  document.getElementById(`page-${n}`).classList.remove('hidden');
+  
+  document.querySelectorAll('button[id^="nav-"]').forEach(b => b.classList.remove('nav-active'));
+  document.getElementById(`nav-${n}`).classList.add('nav-active');
+
+  if (n === 0) renderCustomers();
+  if (n === 1) renderItems();
+  if (n === 3) renderReport();
+}
+
+// Customers
+function renderCustomers() {
+  const list = document.getElementById('customers-list');
+  list.innerHTML = customers.map(c => `
+    <div class="bg-zinc-900 p-4 rounded-2xl">
+      <div class="flex justify-between">
+        <h3 class="font-bold text-lg">${c.name}</h3>
+        <span class="text-amber-400">${c.phone}</span>
+      </div>
+      <p class="text-zinc-400 text-sm mt-1">${c.address || ''}</p>
+    </div>
+  `).join('');
+}
+
+function addCustomer() {
+  const name = prompt("نام مشتری:");
+  if (!name) return;
+  const phone = prompt("شماره تلفن:");
+  customers.push({ id: Date.now(), name, phone: phone || '', address: '', transactions: [] });
+  saveData();
+  renderCustomers();
+}
+
+// Items
+function renderItems() {
+  const list = document.getElementById('items-list');
+  list.innerHTML = items.map(i => `
+    <div class="bg-zinc-900 p-4 rounded-2xl">
+      <div class="flex justify-between">
+        <h3 class="font-bold">${i.name}</h3>
+        <span class="text-amber-400">${i.weight} گرم</span>
+      </div>
+      <p class="text-zinc-400">عیار: ${i.purity} | اجرت: ${i.wagePercent}%</p>
+    </div>
+  `).join('');
+}
+
+function addItem() {
+  const name = prompt("نام جنس (مثل گردنبند، آب شده):");
+  if (!name) return;
+  const weight = parseFloat(prompt("وزن (گرم):")) || 0;
+  const purity = parseFloat(prompt("عیار (مثلاً 750):")) || 750;
+  const wage = parseFloat(prompt("درصد اجرت:")) || 0;
+  
+  items.push({ id: Date.now(), name, weight, purity, wagePercent: wage });
+  saveData();
+  renderItems();
+}
+
+// Invoice
+function addItemToInvoice() {
+  if (items.length === 0) {
+    alert("اول جنس اضافه کنید");
+    return;
+  }
+  
+  let options = items.map((i, idx) => `<option value="${idx}">${i.name} - ${i.weight}g - ${i.wagePercent}%</option>`).join('');
+  
+  const idx = prompt("شماره جنس را انتخاب کنید (از لیست):\n\n" + items.map((i,idx) => idx+1 + ". " + i.name).join("\n"));
+  if (!idx) return;
+  
+  const item = items[idx-1];
+  if (!item) return;
+  
+  const qty = parseFloat(prompt("وزن این فاکتور (گرم):", item.weight)) || item.weight;
+  
+  currentInvoice.items.push({
+    ...item,
+    invoiceWeight: qty
+  });
+  
+  renderCurrentInvoice();
+}
+
+function renderCurrentInvoice() {
+  const container = document.getElementById('invoice-items');
+  container.innerHTML = currentInvoice.items.map((it, idx) => `
+    <div class="bg-zinc-800 p-4 rounded-2xl flex justify-between items-center">
+      <div>
+        <p class="font-medium">${it.name}</p>
+        <p class="text-sm text-zinc-400">${it.invoiceWeight} گرم × ${it.wagePercent}%</p>
+      </div>
+      <div class="text-right">
+        <p class="text-amber-400">${(it.invoiceWeight * it.wagePercent / 100).toFixed(2)} اجرت</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+function saveInvoice() {
+  if (currentInvoice.items.length === 0) {
+    alert("هیچ جنسی اضافه نشده");
+    return;
+  }
+  
+  const type = document.getElementById('invoice-type').value;
+  const customerId = document.getElementById('customer-select').value;
+  
+  const totalWeight = currentInvoice.items.reduce((sum, it) => sum + it.invoiceWeight, 0);
+  const totalWage = currentInvoice.items.reduce((sum, it) => sum + (it.invoiceWeight * it.wagePercent / 100), 0);
+  
+  const invoice = {
+    id: Date.now(),
+    date: new Date().toLocaleDateString('fa-IR'),
+    type,
+    customerId: parseInt(customerId),
+    items: [...currentInvoice.items],
+    totalWeight: totalWeight.toFixed(2),
+    totalWage: totalWage.toFixed(2)
+  };
+  
+  invoices.push(invoice);
+  saveData();
+  
+  alert(`فاکتور ثبت شد!\nوزن کل: ${totalWeight} گرم\nاجرت کل: ${totalWage}`);
+  
+  currentInvoice.items = [];
+  renderCurrentInvoice();
+}
+
+// Report
+function renderReport() {
+  let totalWeight = 0, totalWage = 0;
+  
+  invoices.forEach(inv => {
+    totalWeight += parseFloat(inv.totalWeight);
+    totalWage += parseFloat(inv.totalWage);
+  });
+  
+  document.getElementById('report-content').innerHTML = `
+    <div class="grid grid-cols-2 gap-4">
+      <div class="bg-zinc-800 p-6 rounded-3xl text-center">
+        <p class="text-amber-400 text-3xl font-bold">${totalWeight.toFixed(1)}</p>
+        <p class="text-zinc-400">گرم کل</p>
+      </div>
+      <div class="bg-zinc-800 p-6 rounded-3xl text-center">
+        <p class="text-amber-400 text-3xl font-bold">${totalWage.toFixed(1)}</p>
+        <p class="text-zinc-400">اجرت کل</p>
+      </div>
+    </div>
+    <p class="text-center text-zinc-500 mt-8">تعداد فاکتور: ${invoices.length}</p>
+  `;
+}
+
+// Init
+function init() {
+  // Populate customer select
+  const select = document.getElementById('customer-select');
+  select.innerHTML = '<option value="">انتخاب مشتری</option>' + 
+    customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  
+  showPage(0);
+}
+
+init();
+</script>
 </body>
 </html>
